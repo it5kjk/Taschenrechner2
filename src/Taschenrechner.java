@@ -1,12 +1,22 @@
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
+
 
 
 public class Taschenrechner extends JFrame {
@@ -22,6 +32,8 @@ public class Taschenrechner extends JFrame {
 	private JButton bu_1; // plus operation
 	private JButton bu_2;
 	
+	private DecimalFormat df = new DecimalFormat("#.##");
+	
 	/**
 	 * Create the frame.
 	 */
@@ -33,6 +45,11 @@ public class Taschenrechner extends JFrame {
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		contentPane.setLayout(null);
 		setContentPane(contentPane);
+		
+		// round up the digit to next highest value
+		df.setRoundingMode(RoundingMode.UP);
+		//set period as digit character
+		df.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.US));
 		
 		tf_1 = new JTextField();
 		tf_1.setBounds(20, 35, 60, 20);
@@ -57,7 +74,10 @@ public class Taschenrechner extends JFrame {
 				applyBinaryOp(new MathOp() {
 					@Override
 					public double calc(double arg1, double arg2) {
-						return arg1 + arg2;
+						System.out.println(arg1 + arg2);
+						System.out.println(df.format(arg1 +arg2));
+						return Double.parseDouble(
+								df.format(arg1 + arg2));
 					}
 				});
 			}
@@ -73,7 +93,9 @@ public class Taschenrechner extends JFrame {
 				applyBinaryOp(new MathOp() {
 					@Override
 					public double calc(double arg1, double arg2) {
-						return arg1 * arg2;
+						System.out.println(arg1 * arg2);
+						System.out.println(df.format(arg1 * arg2));
+						return Double.parseDouble(df.format(arg1 * arg2));
 					}
 				});
 			}
@@ -84,14 +106,29 @@ public class Taschenrechner extends JFrame {
 	
 	private Double getDoubleOrWarn(JTextField tf) {
 	    try {
-	        double d = Double.parseDouble(tf.getText());   
-	        tf.setBackground(Color.white);
-	        return d;
+	    	Pattern pattern = Pattern.compile("[a-zA-Z]");
+	    	Matcher matcher = pattern.matcher(tf.getText());
+	    	String tfContent = tf.getText();
+	    	if (!matcher.find()) {
+	    		ScriptEngineManager mgr = new ScriptEngineManager();
+	    	    ScriptEngine engine = mgr.getEngineByName("JavaScript");
+	    		Double d = Double.parseDouble(engine.eval(tfContent).toString());
+		        tf.setBackground(Color.white);
+		        return d;
+			} else {
+				throw new ScriptException(
+						"Input is not a mathematical expression");
+			}
+	        
 	    } catch (NumberFormatException e) {
 	        tf.setBackground(Color.red);
 	        tf.requestFocus();
 	        return null;
-	    }
+	    } catch (ScriptException e) {
+	    	tf.setBackground(Color.red);
+	        tf.requestFocus();
+	        return null;
+		}
 	}
 	
 	static interface MathOp {
